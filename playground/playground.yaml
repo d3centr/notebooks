@@ -1,0 +1,100 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  ImageId:
+    Type: String
+  PublicKey:
+    Type: String
+  ConnectionIp:
+    Type: String
+  InstanceType:
+    Type: String
+    Default: m5.large
+  InstanceName:
+    Type: String
+    Default: playground
+
+Resources:
+  Key:
+    Type: AWS::EC2::KeyPair
+    Properties: 
+      KeyName: !Ref InstanceName
+      PublicKeyMaterial: !Ref PublicKey
+  PublicSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ssh from public ip of playground owner
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        CidrIp: !Sub ${ConnectionIp}/32
+        FromPort: 22
+        ToPort: 22
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      IamInstanceProfile: !ImportValue playground-profile
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref Key
+      SecurityGroupIds: 
+        - !Ref PublicSG
+      # required for EFS
+      SecurityGroups:
+        - default
+      Tags: 
+        - Key: Name
+          Value: !Ref InstanceName
+      # when cfn optimizes instance changes, it doesn't run init: adding cloud-config to run on reboot
+      UserData:
+        Fn::Base64: !Sub |
+          Content-Type: multipart/mixed; boundary="//"
+          MIME-Version: 1.0
+
+          --//
+          Content-Type: text/cloud-config; charset="us-ascii"
+          MIME-Version: 1.0
+          Content-Transfer-Encoding: 7bit
+          Content-Disposition: attachment; filename="cloud-config.txt"
+
+          #cloud-config
+          cloud_final_modules:
+          - [scripts-user, always]
+
+          --//
+          Content-Type: text/x-shellscript; charset="us-ascii"
+          MIME-Version: 1.0
+          Content-Transfer-Encoding: 7bit
+          Content-Disposition: attachment; filename="userdata.txt"
+
+          #!/bin/bash
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-init -s ${AWS::StackName} -r Instance --region ${AWS::Region} -c any
+          --//--
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          any:
+            - all
+        all:
+          packages:
+            yum:
+              nfs-utils: []
+          commands:
+            00_set_env_variables:
+              command: !Sub |
+                echo AWS_REGION=${AWS::Region} >> /etc/environment
+            01_mount_efs:
+              command: !Sub |
+                mkdir /mnt/efs
+                mount -t nfs -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport $EFS.efs.${AWS::Region}.amazonaws.com:/ /mnt/efs
+              env:
+                EFS: !ImportValue playground-EFS
+            02_link_notebooks:
+              command: !Sub |
+                ln -s /mnt/efs /home/ec2-user
+                # give ec2 user write access on efs
+                chown -R ec2-user:users /mnt/efs
+            03_install_python_modules:
+              command: |
+                runuser -l ec2-user -c 'pip install jupyterlab pyarrow'
+
