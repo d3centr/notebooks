@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: 2010-09-09 
+Description: Bucket, Network File System & output Variables for cross-stack reference
+
+Parameters: 
+  BucketName:
+    Type: String
+    Default: ""
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: expecting 3 subnets
+
+Conditions:  
+  ApplyBucket: !Not [!Equals [ !Ref BucketName, ""]]
+
+Resources: 
+  Bucket: 
+    Condition: ApplyBucket
+    Type: AWS::S3::Bucket 
+    Properties: 
+      BucketName: !Ref BucketName
+
+  EFS: 
+    Type: AWS::EFS::FileSystem 
+    Properties: 
+      FileSystemTags: 
+        - Key: Name 
+          Value: playground 
+  MountTargetA: 
+    Type: AWS::EFS::MountTarget 
+    Properties: 
+      FileSystemId: !Ref EFS 
+      SubnetId: !Select [0, !Ref Subnets]
+      SecurityGroups: 
+        - !GetAtt MountTargetSG.GroupId 
+  MountTargetB: 
+    Type: AWS::EFS::MountTarget 
+    Properties: 
+      FileSystemId: !Ref EFS 
+      SubnetId: !Select [1, !Ref Subnets]
+      SecurityGroups: 
+        - !GetAtt MountTargetSG.GroupId 
+  MountTargetC: 
+    Type: AWS::EFS::MountTarget 
+    Properties: 
+      FileSystemId: !Ref EFS 
+      SubnetId: !Select [2, !Ref Subnets]
+      SecurityGroups: 
+        - !GetAtt MountTargetSG.GroupId 
+  MountTargetSG: 
+    Type: AWS::EC2::SecurityGroup 
+    Properties: 
+      GroupDescription: playground mount target 
+      SecurityGroupIngress: 
+      - IpProtocol: tcp 
+        FromPort: 2049 
+        ToPort: 2049 
+        SourceSecurityGroupName: default 
+
+  PlaygroundRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+              - ec2.amazonaws.com
+          Action:
+            - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonElasticFileSystemClientReadWriteAccess
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - !If [ApplyBucket, !Ref PlaygroundPolicy, !Ref AWS::NoValue]
+  PlaygroundPolicy:
+    Condition: ApplyBucket
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:*
+            Resource:
+              - !Sub arn:aws:s3:::${BucketName}
+              - !Sub arn:aws:s3:::${BucketName}/*
+  PlaygroundProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref PlaygroundRole
+
+Outputs: 
+  EFS: 
+    Value: !Ref EFS 
+    Export: 
+      Name: playground-EFS
+
+  PlaygroundProfile:
+    Value: !Ref PlaygroundProfile
+    Export:
+      Name: playground-profile
+
