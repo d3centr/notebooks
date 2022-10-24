@@ -34,16 +34,18 @@ case $1 in
         aws cloudformation deploy --stack-name $NAME-storage --template-file $1 \
             --capabilities CAPABILITY_IAM --parameter-overrides Subnets=$subnets ${@:2};;
 
-    # key required: `./stack.sh playground.yaml PublicKeyPath=<path/to/.ssh/my-key.pub>`
+    # key required: `./stack.sh playground.yaml pub=<path/to/.ssh/my-key.pub>`
     playground.yaml)
         params=()
         for param in ${@:2}; do
             IFS== read key value <<< "$param"
-            if [ $key = PublicKeyPath ]; then
+            if [ $key = pub ]; then
                 params+=( PublicKey=`cat $value` )
-            elif [ $key = InstanceName ]; then
+            elif [ $key = name ]; then
                 NAME=$value
-                params+=( $key=$value )
+                params+=( InstanceName=$value )
+            elif [ $key = type ]; then
+                params+=( InstanceType=$value )
             else
                 params+=( $key=$value )
             fi
