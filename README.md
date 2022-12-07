@@ -1,0 +1,1 @@
+see `playground` subfolder to run or develop notebooks in a simple but scalable Jupyter server on AWS

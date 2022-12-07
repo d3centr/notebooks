@@ -101,3 +101,8 @@ Outputs:
     Export:
       Name: playground-profile
 
+  PlaygroundBucket:
+    Value: !Ref BucketName
+    Export:
+      Name: playground-bucket
+

@@ -1,3 +1,5 @@
 # vim swap file
 *.swp
 
+# notebook metadata
+**/.ipynb_checkpoints/*

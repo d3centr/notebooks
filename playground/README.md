@@ -38,6 +38,7 @@ By default, playground runs on a small m5.large instance, i.e. `type=m5.large`. 
 ### Connect
 
 ```bash
+# add -A to forward ssh authentication agent: useful to interact with a remote repo
 ssh -i <private key> -L 8888:localhost:8888 ec2-user@<remote ip>
 ```
 

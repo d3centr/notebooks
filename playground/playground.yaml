@@ -82,7 +82,10 @@ Resources:
           commands:
             00_set_env_variables:
               command: !Sub |
-                echo AWS_REGION=${AWS::Region} >> /etc/environment
+                echo 'export AWS_REGION=${AWS::Region}' >> /etc/profile.d/env-init.sh
+                echo "export PLAYGROUND_BUCKET=$PLAYGROUND_BUCKET" >> /etc/profile.d/env-init.sh
+              env:
+                PLAYGROUND_BUCKET: !ImportValue playground-bucket
             01_mount_efs:
               command: !Sub |
                 mkdir /mnt/efs
