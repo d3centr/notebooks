@@ -99,5 +99,5 @@ Resources:
                 chown -R ec2-user:users /mnt/efs
             03_install_python_modules:
               command: |
-                runuser -l ec2-user -c 'pip install jupyterlab pyarrow'
+                runuser -l ec2-user -c 'pip install jupyterlab pyarrow s3fs seaborn plotly'
 

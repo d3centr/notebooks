@@ -4,20 +4,18 @@
 
 According to stated objectives:
 
-> measure and detect MEV slippage
+> detecting & measuring MEV
 
 the following transaction types should be recognized.
 
-1. *transaction reordering* **Attacks**: front running and sandwiches.
+1. *transaction reordering* **MEV**: front running and sandwiches. A MEV sandwich, the combo of a frontrun and a backrun, is similar to a market-maker placing orders to buy and sell on both sides of the market. A market-maker pockets the spread like a MEV sandwich. The allowed spread of a swap incentivizes fast inclusion in a block. A transaction could offer block builders a controlled spread rather than paying high gas fees, which are paid by MEV bots. Quantifying value extraction will help to understand how much spread should be paid to include a transaction early in the block and avoid a worse slippage.
 2. **Arbitrage**: it is benefiting users by making sure that transactions are executed at market price. In this case, even a negative MEV slippage could be considered fair. Opportunistic block placements should still take arbitrage into account and even more when a transaction creates a pricing differential. *Why wouldn't a transaction profit from the arbitrage of its own trade?* The blockchain is no exclusive business.  
-3. **Trades**: in the most common case of market-driven slippage, trades participate in price discovery.
-
-Block sequencing of attacks, arbitrage and trades make up MEV pitfalls and opportunities.
+3. **Swaps**: in the most common case of market-driven slippage, token swaps participate in price discovery. They create MEV, which is then extracted.
 
 ## Services
 Two services provide data to help identify transaction types of interest.
 
-- a **Mempool Listener** of incoming pending transactions to record the initial ordering and detect attacks
+- a **Mempool Listener** of incoming pending transactions to record creation time and detect reordering
 - a pre/post **Block Tracer** to retrieve ERC20 transfer logs and calculate Extracted Value
 
 ## Architecture
@@ -39,7 +37,7 @@ We first ran the global network for more than 4 days, including a full UTC day (
 
 Referenced code from commit *3b85c87* in github.com/dapfyi/[dap](https://github.com/dapfyi/dap):
 - The cloud init [config](https://github.com/dapfyi/dap/blob/3b85c87d9c1d676799f74560b2c0401bfea359b7/client/client.yaml#L487-L555) added the ability to run Python deamons on Geth nodes.
-- The mempool [listener](https://github.com/dapfyi/dap/blob/3b85c87d9c1d676799f74560b2c0401bfea359b7/client/scripts/daemons/mempool_listener.py) triggered a OOM failure of Geth on a 8GiB instance in us-east-1, while running fine in Singapore and Frankfurt.
+- The mempool [listener](https://github.com/dapfyi/dap/blob/3b85c87d9c1d676799f74560b2c0401bfea359b7/client/scripts/daemons/mempool_listener.py) triggered a OOM failure of Geth on an 8GiB instance in us-east-1, while running fine in Singapore and Frankfurt.
     - It needs to handle a 10k event buffer, which is IO bound. When running on a single CPU, persisting events too often runs the risk to be disconnected if the buffer is overwhelmed, while growing this buffer increases the memory footprint. The Python script already served its purpose for a one-off analysis. It should be rewritten in Rust to gain efficiency in the next iteration.
 - The original [tracer](https://github.com/dapfyi/dap/blob/3b85c87d9c1d676799f74560b2c0401bfea359b7/client/scripts/daemons/prepost_block_tracer.py) failed to handle 1% of blocks, which contained anonymous events with no topic. It has then been fixed in the following [commit](https://github.com/dapfyi/dap/blob/98d422c41fd5189ae75d8d7a5784eb2b9561787d/client/scripts/daemons/prepost_block_tracer.py).
 
@@ -58,7 +56,7 @@ Setting an AWS profile name to its region confirms that you are deploying blockc
 
 `DaP ~ AWS_PROFILE set: runtime to authenticate with [us-east-1] AWS profile.`
 
-Commands to bootstrap nodes in every one of the 4 regions:\
+Commands to bootstrap nodes in each of the 4 regions:\
 set the `REGION` variable and chose the last parameter `Pyd=true` or `Pyd2=true` according to architecture.
 ```bash
 REGION=us-east-1

@@ -55,7 +55,7 @@ or
 - a *bad*  — Slippage < 0, negative Extracted Value — 
 block sequencing.
 
-Therefore,
+Therefore, in the interest of better execution at all times, when not limited to intentional MEV:
 > Block Slippage = Extracted Value (EV).
 
 ## EV Interpretation
