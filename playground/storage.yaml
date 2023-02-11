@@ -102,7 +102,7 @@ Outputs:
       Name: playground-profile
 
   PlaygroundBucket:
-    Value: !Ref BucketName
+    Value: !If [ApplyBucket, !Ref BucketName, "placeholder"]
     Export:
       Name: playground-bucket
 
